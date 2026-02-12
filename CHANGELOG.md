@@ -1,5 +1,9 @@
 # Changelog of `sf-symbols-svg`
 
+## 7.2.0 - 2026-02-12
+
+- Add symbols from 7.2 (119)
+
 ## 7.0.1 - 2025-10-08
 
 - Add missing symbols from 7.0 (115) compared to beta

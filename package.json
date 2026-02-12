@@ -1,9 +1,12 @@
 {
   "name": "sf-symbols-svg",
   "description": "Convert Apple SF Symbols to SVGs",
-  "version": "7.0.1",
+  "version": "7.2.0",
   "license": "MIT",
-  "repository": "https://github.com/MoOx/sf-symbols-svg",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MoOx/sf-symbols-svg.git"
+  },
   "keywords": [
     "sf-symbols",
     "svg",
@@ -19,7 +22,7 @@
   "type": "module",
   "exports": "./dist/index.js",
   "bin": {
-    "sf-symbols-svg": "./dist/index.js"
+    "sf-symbols-svg": "dist/index.js"
   },
   "files": [
     "sources",
