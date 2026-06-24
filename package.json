@@ -1,7 +1,7 @@
 {
   "name": "sf-symbols-svg",
   "description": "Convert Apple SF Symbols to SVGs",
-  "version": "7.2.0",
+  "version": "8.0.0-beta.123",
   "license": "MIT",
   "repository": {
     "type": "git",

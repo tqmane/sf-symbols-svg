@@ -15,7 +15,7 @@
 
 > SF Symbols to SVGs. Period.
 
-[Apple SF Symbols](https://developer.apple.com/sf-symbols/) is an icon set with more thant 6,000 symbols.
+[Apple SF Symbols](https://developer.apple.com/sf-symbols/) is an icon set with more than 7,000 symbols.
 Unfortunately, this are not available on the web.
 This tool solve this.
 
