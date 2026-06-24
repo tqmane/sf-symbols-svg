@@ -419,9 +419,14 @@ async function makeSvgs(options?: MakeSvgsOptions): Promise<void> {
   console.log(`Fonts loaded: ${validFonts.map((f) => f.weight).join(", ")}`);
   console.log("Capturing Paths... This takes a while");
 
+  // symbols.txt can be either a continuous string of glyphs (older exports) or
+  // one glyph per line (newer SF Symbols app exports). Stripping newlines first
+  // makes both formats parse identically: each symbol glyph is a surrogate pair
+  // (2 UTF-16 code units).
   let symbolsData =
     fs
       .readFileSync(PATHS.SYMBOLS, { encoding: "utf-8" })
+      .replace(/\r?\n/g, "")
       .match(/.{1,2}/g)
       ?.filter((char: string) => char !== "") || [];
 

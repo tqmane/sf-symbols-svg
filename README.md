@@ -80,6 +80,86 @@ sf-symbols-svg --icons-list /path/to/your/icons-list.txt
 
 ## Creating a new version
 
+When Apple ships a new SF Symbols version, add it to this tool by creating a new
+folder in `sources/`. The tool detects versions from the folder names and uses
+the most recent one as the default (see [SF Symbols Versions](#sf-symbols-versions)).
+
+1. Create a new directory in `sources/{version}/` (example: `sources/8.0/`).
+   Use a plain numeric name (`8.0`, not `8.0-beta`) so version sorting keeps
+   working — the tool compares versions numerically.
+2. Extract the character mappings from the SF Symbols app:
+   - Get the [SF Symbols app](https://developer.apple.com/sf-symbols/) and open it
+   - Switch to the **list view** (the list icon in the toolbar)
+   - Select all symbols (`cmd + A` or `Edit` > `Select All`)
+   - Press the **right arrow key** to expand every group, so all variants
+     (`.fill`, `.circle`, `.slash`, numbered variants, …) are revealed and
+     selected — see the note below
+   - With everything selected, right click and press `Copy {x} symbols as Text`
+   - Paste into a file at `sources/{version}/symbols.txt`
+   - Right click again and press `Copy {x} names`
+   - Paste into a file at `sources/{version}/names.txt`
+   - Both files must have the **same number of entries**, aligned line by line
+     (the tool pairs them by index). `symbols.txt` may be one glyph per line or
+     a single continuous string — both are supported.
+
+   > [!IMPORTANT]
+   > Since SF Symbols 8, the app **groups symbol variants** under a single base
+   > symbol in the default grid view. A plain "Select All + Copy" there only
+   > copies the base of each group and silently drops thousands of variants. Use
+   > the **list view** and **expand all groups with the right arrow key** before
+   > copying so the full set is captured. After copying, sanity-check the counts:
+   > the number of lines in `symbols.txt` and `names.txt` must match, and should
+   > be close to the symbol count the app shows on launch (e.g. 7151 for the
+   > SF Symbols 8 beta).
+
+3. Make sure you have the matching _SF Pro_ font version installed (see
+   [Font Compatibility](#font-compatibility)).
+4. Test the new version locally before releasing:
+
+   ```console
+   # Generate every symbol of the new (now default) version, all weights
+   npm run dev
+
+   # Or target a subset to iterate quickly
+   node --experimental-strip-types ./src/index.ts --sf-version 8.0 --icons-list ./src/test-icons.txt --output ./test-output
+
+   # Run the test suite
+   npm run test
+   ```
+
+That's it! The tool will automatically detect the new version and use it as the
+default (since it's the most recent).
+
+### Releasing a beta version
+
+When a new SF Symbols version is still in beta, Apple may add or rename symbols
+before the final release. Ship it as a prerelease so it does not become the
+default `npm install` for everyone:
+
+1. Add the version folder as above (e.g. `sources/8.0/`) and fill in
+   `symbols.txt` / `names.txt` from the **beta** SF Symbols app.
+2. Set a prerelease version in `package.json` (e.g. `8.0.0-beta.123`).
+3. Publish under the `beta` dist-tag so it does not become the default
+   `latest`:
+
+   ```console
+   npx npmpub --tag beta
+   ```
+
+Users opt into the beta explicitly:
+
+```console
+npm install sf-symbols-svg@beta
+# or
+npx sf-symbols-svg@beta --weight all
+```
+
+> [!IMPORTANT]
+> Once the SF Symbols version is final, re-extract the data from the stable app
+> (the beta is often missing or renames symbols), set the version to the stable
+> `x.y.z`, and release it normally with `npm run release` so the stable version
+> becomes the default (`latest`).
+
 ## About SF Symbols Versions and Font Compatibility
 
 ### SF Symbols Versions
@@ -88,18 +168,7 @@ This tool automatically detects supported SF Symbols versions by scanning the `s
 
 The tool will automatically use the most recent version as the default, but you can specify a different version using the `--sf-version` option. If no matching versions are detected in the `sources/` directory, the tool will display an error message.
 
-If you want to use a different version (when new SF Symbols versions are released):
-
-1. Create a new directory in `sources/{version}/` (example: `sources/7.0/`)
-2. Extract the character mappings:
-   - Get the [SF Symbols app](https://developer.apple.com/sf-symbols/) and open the app
-   - Select all symbols (`cmd + A` or `Edit` > `Select All`)
-   - Right click on the selection, and press `Copy all {x} symbols`
-   - Paste the symbols into a file at `sources/{version}/symbols.txt`
-   - Right click again on the selection, and press `Copy all {x} names`
-   - Paste the names into a file at `sources/{version}/names.txt`
-
-That's it! The tool will automatically detect the new version and use it as the default (since it's the most recent).
+To add support for a new SF Symbols version, see [Creating a new version](#creating-a-new-version).
 
 ### Using a Custom Sources Directory
 

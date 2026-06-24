@@ -3,7 +3,7 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
-import { DOMParser } from "xmldom";
+import { DOMParser } from "@xmldom/xmldom";
 
 const execAsync = promisify(exec);
 
