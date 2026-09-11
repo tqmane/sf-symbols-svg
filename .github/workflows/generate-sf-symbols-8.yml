@@ -1,0 +1,172 @@
+name: Generate SF Symbols 8 SVGs
+
+on:
+  workflow_dispatch:
+    inputs:
+      publish_release:
+        description: "Also publish the generated archive as a GitHub Release"
+        required: true
+        type: boolean
+        default: false
+      release_tag:
+        description: "Optional release tag (blank = sf-symbols-8.0-run-<run number>)"
+        required: false
+        type: string
+        default: ""
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sf-symbols-8-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  generate:
+    name: Generate all SF Symbols 8 SVGs
+    runs-on: macos-latest
+    timeout-minutes: 360
+
+    env:
+      SF_VERSION: "8.0"
+      OUT_DIR: "sf-symbols-8.0-svg"
+      ZIP_NAME: "sf-symbols-8.0-all-weights.zip"
+      SHA_NAME: "sf-symbols-8.0-all-weights.zip.sha256"
+      MANIFEST_NAME: "sf-symbols-8.0-manifest.txt"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: "package.json"
+          cache: "npm"
+
+      - name: Download and install SF Pro fonts
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 \
+            https://devimages-cdn.apple.com/design/resources/download/SF-Pro.dmg \
+            --output SF-Pro.dmg
+
+          hdiutil attach SF-Pro.dmg -nobrowse
+          sudo installer -pkg "/Volumes/SFProFonts/SF Pro Fonts.pkg" -target /
+          hdiutil detach "/Volumes/SFProFonts" -force
+
+          echo "Installed SF Pro Text fonts:"
+          ls -la /Library/Fonts/SF-Pro-Text-*.otf
+
+      - name: Install dependencies and build
+        run: |
+          npm ci
+          npm run build
+
+      - name: Generate SF Symbols 8 in every weight
+        run: |
+          node dist/index.js \
+            --sf-version "$SF_VERSION" \
+            --weight all \
+            --fonts-dir /Library/Fonts \
+            --output "$OUT_DIR"
+
+      - name: Verify complete output
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          SOURCE_COUNT="$(awk 'NF { count++ } END { print count + 0 }' "sources/${SF_VERSION}/names.txt")"
+          WEIGHT_COUNT=9
+          EXPECTED_COUNT=$((SOURCE_COUNT * WEIGHT_COUNT))
+          GENERATED_COUNT="$(find "$OUT_DIR" -type f -name '*.svg' | wc -l | tr -d ' ')"
+          PACKAGE_VERSION="$(npm pkg get version | tr -d '\"')"
+
+          echo "SF Symbols source entries: $SOURCE_COUNT"
+          echo "Weights: $WEIGHT_COUNT"
+          echo "Expected SVG files: $EXPECTED_COUNT"
+          echo "Generated SVG files: $GENERATED_COUNT"
+
+          if [[ "$GENERATED_COUNT" -ne "$EXPECTED_COUNT" ]]; then
+            echo "::error::Expected $EXPECTED_COUNT SVG files, but generated $GENERATED_COUNT."
+            exit 1
+          fi
+
+          {
+            echo "SF Symbols version: $SF_VERSION"
+            echo "Repository: $GITHUB_REPOSITORY"
+            echo "Commit: $GITHUB_SHA"
+            echo "Package version: $PACKAGE_VERSION"
+            echo "Source symbols: $SOURCE_COUNT"
+            echo "Weights: thin, ultraLight, light, regular, medium, semibold, bold, heavy, black"
+            echo "Generated SVGs: $GENERATED_COUNT"
+            echo
+            echo "Files:"
+            find "$OUT_DIR" -type f -name '*.svg' -print | LC_ALL=C sort
+          } > "$MANIFEST_NAME"
+
+      - name: Create archive and checksum
+        shell: bash
+        run: |
+          set -euo pipefail
+          zip -qry "$ZIP_NAME" "$OUT_DIR"
+          shasum -a 256 "$ZIP_NAME" > "$SHA_NAME"
+          ls -lh "$ZIP_NAME" "$SHA_NAME" "$MANIFEST_NAME"
+
+      - name: Upload Actions artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sf-symbols-8.0-all-weights
+          path: |
+            ${{ env.ZIP_NAME }}
+            ${{ env.SHA_NAME }}
+            ${{ env.MANIFEST_NAME }}
+          if-no-files-found: error
+          retention-days: 90
+          compression-level: 0
+
+      - name: Publish GitHub Release
+        if: ${{ inputs.publish_release }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REQUESTED_TAG: ${{ inputs.release_tag }}
+        run: |
+          set -euo pipefail
+
+          if [[ -n "$REQUESTED_TAG" ]]; then
+            TAG="$REQUESTED_TAG"
+          else
+            TAG="sf-symbols-8.0-run-${GITHUB_RUN_NUMBER}"
+          fi
+
+          PACKAGE_VERSION="$(npm pkg get version | tr -d '\"')"
+          RELEASE_FLAGS=()
+          if [[ "$PACKAGE_VERSION" == *-* ]]; then
+            RELEASE_FLAGS+=(--prerelease)
+          fi
+
+          gh release create "$TAG" \
+            "$ZIP_NAME" \
+            "$SHA_NAME" \
+            "$MANIFEST_NAME" \
+            --target "$GITHUB_SHA" \
+            --title "SF Symbols 8.0 SVGs — all weights" \
+            --notes "Generated from ${GITHUB_REPOSITORY}@${GITHUB_SHA}. Includes every SF Symbols 8 source entry in all 9 supported SF Pro Text weights, plus a SHA-256 checksum and manifest." \
+            "${RELEASE_FLAGS[@]}"
+
+          echo "Release created: $TAG" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Job summary
+        if: ${{ always() }}
+        shell: bash
+        run: |
+          {
+            echo "## SF Symbols 8 SVG generation"
+            echo
+            echo "- SF Symbols version: \`$SF_VERSION\`"
+            echo "- Weights: all 9 supported weights"
+            echo "- Artifact: \`sf-symbols-8.0-all-weights\`"
+            echo "- Release requested: \`${{ inputs.publish_release }}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
