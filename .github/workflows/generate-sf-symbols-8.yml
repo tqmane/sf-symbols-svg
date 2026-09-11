@@ -81,6 +81,7 @@ jobs:
           WEIGHT_COUNT=9
           EXPECTED_COUNT=$((SOURCE_COUNT * WEIGHT_COUNT))
           GENERATED_COUNT="$(find "$OUT_DIR" -type f -name '*.svg' | wc -l | tr -d ' ')"
+          PACKAGE_VERSION="$(node -p 'require("./package.json").version')"
 
           echo "SF Symbols source entries: $SOURCE_COUNT"
           echo "Weights: $WEIGHT_COUNT"
@@ -96,7 +97,7 @@ jobs:
             echo "SF Symbols version: $SF_VERSION"
             echo "Repository: $GITHUB_REPOSITORY"
             echo "Commit: $GITHUB_SHA"
-            echo "Package version: $(node -p \"require('./package.json').version\")"
+            echo "Package version: $PACKAGE_VERSION"
             echo "Source symbols: $SOURCE_COUNT"
             echo "Weights: thin, ultraLight, light, regular, medium, semibold, bold, heavy, black"
             echo "Generated SVGs: $GENERATED_COUNT"
@@ -140,7 +141,7 @@ jobs:
             TAG="sf-symbols-8.0-run-${GITHUB_RUN_NUMBER}"
           fi
 
-          PACKAGE_VERSION="$(node -p \"require('./package.json').version\")"
+          PACKAGE_VERSION="$(node -p 'require("./package.json").version')"
           RELEASE_FLAGS=()
           if [[ "$PACKAGE_VERSION" == *-* ]]; then
             RELEASE_FLAGS+=(--prerelease)
